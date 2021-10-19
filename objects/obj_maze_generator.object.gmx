@@ -42,6 +42,7 @@ randomize();
 
 //Grid height and width are 0 indexed. This 10x10 maze's last column is 9.
 maze_size = 32;
+path_length = 2;
 maze_grid = ds_grid_create(maze_size,maze_size);
 
 //Set each cell in the grid to 1 to denote that something is there.
@@ -61,6 +62,18 @@ backstep = false; //Whether or not to enable to backstepping routine.
 directions_checked = ds_list_create(); //A list containing the checked directions of the carver during generation.
 visited_cells_x = ds_list_create();
 visited_cells_y = ds_list_create();
+
+directions_x = ds_map_create();
+ds_map_add(directions_x,"N",0);
+ds_map_add(directions_x,"S",0);
+ds_map_add(directions_x,"E",1);
+ds_map_add(directions_x,"W",-1);
+
+directions_y = ds_map_create();
+ds_map_add(directions_y,"N",-1);
+ds_map_add(directions_y,"S",1);
+ds_map_add(directions_y,"E",0);
+ds_map_add(directions_y,"W",0);
 
 ds_list_add(visited_cells_x,carver_x);
 ds_list_add(visited_cells_y,carver_y);
@@ -106,10 +119,14 @@ if ds_list_find_index(directions_checked,move_to) != -1
     //If all directions checked, backstep. Otherwise find a new direction.
     if ds_list_size(directions_checked) &gt;= 4
     {
-        backstep = true;
-        backstep_position = ds_list_size(visited_cells_x)-1;
         ds_list_clear(directions_checked);
-        show_debug_message("MAZE GEN&gt; Entering backstep routine..");
+        
+        if ds_list_size(visited_cells_x) &gt; 0
+        {
+            show_debug_message("MAZE GEN&gt; Entering backstep routine..");
+            backstep = true;
+            backstep_position = ds_list_size(visited_cells_x)-1;
+        }
     }
     else
     {
@@ -122,51 +139,17 @@ if ds_list_find_index(directions_checked,move_to) != -1
 
 ds_list_add(directions_checked,move_to);
 
-switch move_to
+var next_x = carver_x+directions_x[? move_to]*path_length;
+var next_y = carver_y+directions_y[? move_to]*path_length;
+
+if move_to != undefined &amp;&amp; next_x &gt; 0 &amp;&amp; next_y &gt; 0 &amp;&amp; next_x &lt; maze_size-1 &amp;&amp; next_y &lt; maze_size-1 &amp;&amp; ds_grid_get(maze_grid,next_x,next_y) != 0
 {
-    case "N":
-    {
-        //Check to see if the selected position is valid. Carve a path if so, otherwise check_next.
-        if (carver_y-2 &gt; 0 &amp;&amp; ds_grid_get(maze_grid,carver_x,carver_y-2) != 0)
-        {
-            maze_grid_update("N",2);
-        }
-    }
-    break;
-    
-    case "S":
-    {
-        //Check to see if the selected position is valid. Carve a path if so, otherwise check_next.
-        if (carver_y+2 &lt; maze_size &amp;&amp; ds_grid_get(maze_grid,carver_x,carver_y+2) != 0)
-        {
-            maze_grid_update("S",2);
-        }
-    }
-    break;
-    
-    case "E":
-    {
-        //Check to see if the selected position is valid. Carve a path if so, otherwise check_next.
-        if (carver_x+2 &lt; maze_size &amp;&amp; ds_grid_get(maze_grid,carver_x+2,carver_y) != 0)
-        {
-            maze_grid_update("E",2);
-        }
-    }
-    break;
-    
-    case "W":
-    {
-        //Check to see if the selected position is valid. Carve a path if so, otherwise check_next.
-        if (carver_x-2 &gt; 0 &amp;&amp; ds_grid_get(maze_grid,carver_x-2,carver_y) != 0)
-        {
-            maze_grid_update("W",2);
-        }
-    }
-    break;
+    maze_grid_update(move_to,path_length);
+    backstep = false;
 }
 
 //BACKSTEP
-if (backstep == true)
+if (backstep == true &amp;&amp; ds_list_size(visited_cells_x) &gt; 0)
 {
     ds_list_delete(visited_cells_x,backstep_position);
     ds_list_delete(visited_cells_y,backstep_position);
