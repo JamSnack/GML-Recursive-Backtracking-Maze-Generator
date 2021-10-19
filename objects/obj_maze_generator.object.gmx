@@ -41,7 +41,7 @@ untouched cells, to avoid creating circular loops in the maze.
 randomize();
 
 //Grid height and width are 0 indexed. This 10x10 maze's last column is 9.
-maze_size = 32;
+maze_size = 24;
 path_length = 2;
 maze_grid = ds_grid_create(maze_size,maze_size);
 
@@ -62,6 +62,7 @@ backstep = false; //Whether or not to enable to backstepping routine.
 directions_checked = ds_list_create(); //A list containing the checked directions of the carver during generation.
 visited_cells_x = ds_list_create();
 visited_cells_y = ds_list_create();
+maze_complete = false;
 
 directions_x = ds_map_create();
 ds_map_add(directions_x,"N",0);
@@ -110,57 +111,62 @@ view_yview -= 32;
 
 //NOTE: When checking for grid coordinates, an invalid coordinate will also return 0.
 
-//Select a random direction
-var move_to = choose("N","S","W","E");
-
-//Pick a new direction if the current direction is in the list.
-if ds_list_find_index(directions_checked,move_to) != -1
+while maze_complete == false
 {
-    //If all directions checked, backstep. Otherwise find a new direction.
-    if ds_list_size(directions_checked) &gt;= 4
+    //Select a random direction
+    var move_to = choose("N","S","W","E");
+    
+    //Pick a new direction if the current direction is in the list.
+    if ds_list_find_index(directions_checked,move_to) != -1
     {
-        ds_list_clear(directions_checked);
-        
-        if ds_list_size(visited_cells_x) &gt; 0
+        //If all directions checked, backstep. Otherwise find a new direction.
+        if ds_list_size(directions_checked) &gt;= 4
         {
-            show_debug_message("MAZE GEN&gt; Entering backstep routine..");
-            backstep = true;
-            backstep_position = ds_list_size(visited_cells_x)-1;
+            ds_list_clear(directions_checked);
+            
+            if ds_list_size(visited_cells_x) &gt; 0
+            {
+                show_debug_message("MAZE GEN&gt; Entering backstep routine..");
+                backstep = true;
+                backstep_position = ds_list_size(visited_cells_x)-1;
+            }
+        }
+        else
+        {
+            while(ds_list_find_index(directions_checked,move_to) != -1)
+            {
+                move_to = choose("N","S","W","E");
+            }
         }
     }
-    else
+    
+    ds_list_add(directions_checked,move_to);
+    
+    var next_x = carver_x+directions_x[? move_to]*path_length;
+    var next_y = carver_y+directions_y[? move_to]*path_length;
+    
+    if move_to != undefined &amp;&amp; next_x &gt; 0 &amp;&amp; next_y &gt; 0 &amp;&amp; next_x &lt; maze_size-1 &amp;&amp; next_y &lt; maze_size-1 &amp;&amp; ds_grid_get(maze_grid,next_x,next_y) != 0
     {
-        while(ds_list_find_index(directions_checked,move_to) != -1)
-        {
-            move_to = choose("N","S","W","E");
-        }
-    }
-}
-
-ds_list_add(directions_checked,move_to);
-
-var next_x = carver_x+directions_x[? move_to]*path_length;
-var next_y = carver_y+directions_y[? move_to]*path_length;
-
-if move_to != undefined &amp;&amp; next_x &gt; 0 &amp;&amp; next_y &gt; 0 &amp;&amp; next_x &lt; maze_size-1 &amp;&amp; next_y &lt; maze_size-1 &amp;&amp; ds_grid_get(maze_grid,next_x,next_y) != 0
-{
-    maze_grid_update(move_to,path_length);
-    backstep = false;
-}
-
-//BACKSTEP
-if (backstep == true &amp;&amp; ds_list_size(visited_cells_x) &gt; 0)
-{
-    ds_list_delete(visited_cells_x,backstep_position);
-    ds_list_delete(visited_cells_y,backstep_position);
-    backstep_position -= 1;
-    carver_x = ds_list_find_value(visited_cells_x,backstep_position);
-    carver_y = ds_list_find_value(visited_cells_y,backstep_position);
-
-    if backstep_position &lt;= 0
-    {
+        maze_grid_update(move_to,path_length);
         backstep = false;
-        show_debug_message("BACKSTEP FAILED. MAZE COMPLETE?");
+    }
+    
+    //BACKSTEP
+    if (backstep == true &amp;&amp; ds_list_size(visited_cells_x) &gt; 0)
+    {
+        ds_list_delete(visited_cells_x,backstep_position);
+        ds_list_delete(visited_cells_y,backstep_position);
+        backstep_position -= 1;
+        carver_x = ds_list_find_value(visited_cells_x,backstep_position);
+        carver_y = ds_list_find_value(visited_cells_y,backstep_position);
+    
+        if backstep_position &lt;= 0
+        {
+            backstep = false;
+            maze_complete = true;
+            event_user(0); //Maze complete event.
+            show_debug_message("BACKSTEP REACHED 0. MAZE COMPLETE.");
+        }
     }
 }
 </string>
@@ -255,6 +261,30 @@ if (backstep == true &amp;&amp; ds_list_size(visited_cells_x) &gt; 0)
           <argument>
             <kind>1</kind>
             <string>view_xview -= 12;
+</string>
+          </argument>
+        </arguments>
+      </action>
+    </event>
+    <event eventtype="7" enumb="10">
+      <action>
+        <libid>1</libid>
+        <id>603</id>
+        <kind>7</kind>
+        <userelative>0</userelative>
+        <isquestion>0</isquestion>
+        <useapplyto>-1</useapplyto>
+        <exetype>2</exetype>
+        <functionname></functionname>
+        <codestring></codestring>
+        <whoName>self</whoName>
+        <relative>0</relative>
+        <isnot>0</isnot>
+        <arguments>
+          <argument>
+            <kind>1</kind>
+            <string>///MAZE COMPLETED EVENT
+//Here we want to take our maze and make it playable!
 </string>
           </argument>
         </arguments>
